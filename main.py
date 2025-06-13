@@ -1,10 +1,11 @@
 import os
 import subprocess
 import streamlit as st
+import asyncio
 from deepgram import DeepgramClient, PrerecordedOptions
-import yt_dlp  # 👈 use the module like your working code
+import yt_dlp
 
-# Your Deepgram API Key (leave hardcoded during dev)
+# Your Deepgram API Key
 DEEPGRAM_API_KEY = "c5266df73298444472067b2cdefda1b96a7c1589"
 
 # File paths
@@ -17,24 +18,30 @@ deepgram = DeepgramClient(DEEPGRAM_API_KEY)
 # -----------------------------
 # Transcribe audio using Deepgram Nova-3
 # -----------------------------
-def transcribe(audio_path):
-    options = PrerecordedOptions(
-        model="nova-3",
-        language="en",
-        smart_format=True,
-        punctuate=True,
-        paragraphs=True,
-    )
-
-    with open(audio_path, "rb") as audio_file:
-        response = deepgram.listen.prerecorded.v("1").transcribe_file(
-            audio_file, options, mimetype="audio/wav"
+async def transcribe(audio_path):
+    try:
+        options = PrerecordedOptions(
+            model="nova-3",
+            language="en",
+            smart_format=True,
+            punctuate=True,
+            paragraphs=True,
         )
 
-    return response["results"]["channels"][0]["alternatives"][0]["transcript"]
+        with open(audio_path, "rb") as audio_file:
+            response = await deepgram.listen.prerecorded.v("1").transcribe_file(
+                audio_file,
+                options
+            )
+
+        # Access the transcript from the new response structure
+        return response.results.channels[0].alternatives[0].transcript
+
+    except Exception as e:
+        raise Exception(f"Transcription failed: {str(e)}")
 
 # -----------------------------
-# Download + Convert Audio (yt-dlp → mp3 → 16kHz .wav)
+# Download + Convert Audio
 # -----------------------------
 def download_audio(url):
     try:
@@ -50,14 +57,13 @@ def download_audio(url):
             }]
         }
 
-        # Download using yt-dlp (like your working version)
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             ydl.download([url])
 
         if not os.path.exists(output_path):
             raise RuntimeError("yt-dlp failed to extract usable audio.")
 
-        # Convert mp3 → WAV (Deepgram-safe: 16kHz, PCM)
+        # Convert mp3 → WAV
         subprocess.run([
             "ffmpeg", "-y", "-i", output_path,
             "-acodec", "pcm_s16le",
@@ -94,7 +100,8 @@ if st.button("Start Transcription"):
 
             with st.spinner("💬 Transcribing with Deepgram Nova-3..."):
                 try:
-                    transcript = transcribe(audio_path)
+                    # Run async transcribe function
+                    transcript = asyncio.run(transcribe(audio_path))
                     st.success("✅ Transcription Complete!")
                     st.subheader("📄 Transcript")
                     st.text_area("Transcript", transcript, height=300)

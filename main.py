@@ -2,10 +2,12 @@ import os
 import subprocess
 import streamlit as st
 from deepgram import DeepgramClient, PrerecordedOptions
+import yt_dlp  # ✅ Now using yt_dlp as a Python module instead of subprocess
 
 # Your Deepgram API Key
 DEEPGRAM_API_KEY = "c5266df73298444472067b2cdefda1b96a7c1589"
 AUDIO_FILE = "downloaded_audio.wav"
+TEMP_MP3 = "temp_raw_audio.mp3"
 
 # Initialize Deepgram client
 deepgram = DeepgramClient(DEEPGRAM_API_KEY)
@@ -22,26 +24,41 @@ def transcribe(audio_path):
 
     with open(audio_path, "rb") as audio:
         response = deepgram.listen.prerecorded.v("1").transcribe_file(
-            audio, options, mimetype="audio/wav"  # Explicitly tell Deepgram the file format
+            audio, options, mimetype="audio/wav"
         )
 
     transcript = response["results"]["channels"][0]["alternatives"][0]["transcript"]
     return transcript
 
-# Download audio using yt-dlp and convert to WAV
+# ✅ Download audio using yt-dlp (MP3) and convert to proper 16kHz WAV using ffmpeg
 def download_audio(url):
     try:
+        # Step 1: Download MP3
+        ydl_opts = {
+            "format": "bestaudio/best",
+            "outtmpl": TEMP_MP3,
+            "quiet": True,
+            "postprocessors": [{
+                "key": "FFmpegExtractAudio",
+                "preferredcodec": "mp3",
+                "preferredquality": "192"
+            }]
+        }
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            ydl.download([url])
+
+        # Step 2: Convert MP3 to Deepgram-friendly WAV (16000Hz, PCM)
         subprocess.run([
-            "yt-dlp",
-            "-x",
-            "--audio-format", "wav",
-            "--audio-quality", "0",  # best quality
-            "-o", AUDIO_FILE,
-            url
+            "ffmpeg", "-y", "-i", TEMP_MP3,
+            "-acodec", "pcm_s16le", "-ar", "16000", AUDIO_FILE
         ], check=True)
+
         return AUDIO_FILE
+
     except subprocess.CalledProcessError as e:
-        raise RuntimeError(f"Audio download failed: {e}")
+        raise RuntimeError(f"FFmpeg conversion failed: {e}")
+    except Exception as e:
+        raise RuntimeError(f"Audio download/process failed: {e}")
 
 # Streamlit app UI
 st.title("🎬 Paste Video Link to Transcribe")
@@ -73,4 +90,8 @@ if st.button("Start Transcription"):
                 except Exception as e:
                     st.error(f"❌ Transcription failed: {e}")
 
-            os.remove(audio_path)
+            # Clean up temp files
+            if os.path.exists(audio_path):
+                os.remove(audio_path)
+            if os.path.exists(TEMP_MP3):
+                os.remove(TEMP_MP3)

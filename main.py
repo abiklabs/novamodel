@@ -9,7 +9,7 @@ import os
 nest_asyncio.apply()
 
 # For quick testing - API Key
-DEEPGRAM_API_KEY = "c5266df73298444472067b2cdefda1b96a7c1589"  # Your API key here
+DEEPGRAM_API_KEY = "c5266df73298444472067b2cdefda1b96a7c1589"
 
 # Clean layout config
 st.set_page_config(page_title="Transcribe", layout="centered")
@@ -59,7 +59,7 @@ def download_audio(url):
         ydl.download([url])
     return output_base + ".mp3"
 
-async def transcribe_file(file_path):
+def transcribe_file(file_path):
     try:
         # Initialize Deepgram client
         deepgram = DeepgramClient(DEEPGRAM_API_KEY)
@@ -82,7 +82,7 @@ async def transcribe_file(file_path):
             }
             
             # Transcribe the file
-            response = await deepgram.listen.prerecorded.v("1").transcribe_file(
+            response = deepgram.listen.prerecorded.v("1").transcribe_file(
                 source,
                 options
             )
@@ -93,7 +93,7 @@ async def transcribe_file(file_path):
     except Exception as e:
         raise Exception(f"Transcription failed: {str(e)}")
 
-async def transcribe_url(url):
+def transcribe_url(url):
     try:
         # Initialize Deepgram client
         deepgram = DeepgramClient(DEEPGRAM_API_KEY)
@@ -113,7 +113,7 @@ async def transcribe_url(url):
         }
         
         # Transcribe the URL
-        response = await deepgram.listen.prerecorded.v("1").transcribe_url(
+        response = deepgram.listen.prerecorded.v("1").transcribe_url(
             source,
             options
         )
@@ -136,17 +136,17 @@ if uploaded_file or video_url:
                     # Save the uploaded file
                     audio_path = save_uploaded_file(uploaded_file)
                     # Transcribe the file
-                    transcript = asyncio.run(transcribe_file(audio_path))
+                    transcript = transcribe_file(audio_path)
                     
             elif video_url.strip():
-                with st.spinner("🔗 Processing URL..."):
+                with st.spinner("�� Processing URL..."):
                     # For direct audio/video URLs, use transcribe_url
                     if video_url.endswith(('.mp3', '.wav', '.m4a', '.ogg')):
-                        transcript = asyncio.run(transcribe_url(video_url))
+                        transcript = transcribe_url(video_url)
                     else:
                         # For YouTube or other video platforms, download first
                         audio_path = download_audio(video_url)
-                        transcript = asyncio.run(transcribe_file(audio_path))
+                        transcript = transcribe_file(audio_path)
             
             # Display results
             st.success("✅ Done!")

@@ -75,7 +75,6 @@ def transcribe_file(file_path):
             utterances=False,
             profanity_filter=False,
             filler_words=False,
-            tier="enhanced"
         )
         
         # Read the file
@@ -114,7 +113,6 @@ def transcribe_url(url):
             utterances=False,
             profanity_filter=False,
             filler_words=False,
-            tier="enhanced"
         )
         
         # Create the source object correctly

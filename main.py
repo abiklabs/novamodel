@@ -4,6 +4,7 @@ import yt_dlp
 import asyncio
 from deepgram import DeepgramClient, PrerecordedOptions
 import os
+import json
 
 # Setup asyncio for Streamlit
 nest_asyncio.apply()
@@ -64,17 +65,13 @@ def transcribe_file(file_path):
         # Initialize Deepgram client
         deepgram = DeepgramClient(DEEPGRAM_API_KEY)
         
-        # Configure transcription options with enhanced formatting
+        # Configure transcription options - matching playground exactly
         options = PrerecordedOptions(
             model="nova-3",
             language="en",
             smart_format=True,
             punctuate=True,
-            paragraphs=True,
-            diarize=False,
-            utterances=False,
-            profanity_filter=False,
-            filler_words=False,
+            paragraphs=True
         )
         
         # Read the file
@@ -82,7 +79,7 @@ def transcribe_file(file_path):
             # Create the source object correctly
             source = {
                 'buffer': audio,
-                'mimetype': 'audio/mp3'  # or appropriate mimetype
+                'mimetype': 'audio/mp3'
             }
             
             # Transcribe the file
@@ -91,8 +88,8 @@ def transcribe_file(file_path):
                 options
             )
             
-            # Extract transcript from response
-            return response.results.channels[0].alternatives[0].transcript
+            # Get the full response for better paragraph handling
+            return response.to_json(indent=4)
             
     except Exception as e:
         raise Exception(f"Transcription failed: {str(e)}")
@@ -102,17 +99,13 @@ def transcribe_url(url):
         # Initialize Deepgram client
         deepgram = DeepgramClient(DEEPGRAM_API_KEY)
         
-        # Configure transcription options with enhanced formatting
+        # Configure transcription options - matching playground exactly
         options = PrerecordedOptions(
             model="nova-3",
             language="en",
             smart_format=True,
             punctuate=True,
-            paragraphs=True,
-            diarize=False,
-            utterances=False,
-            profanity_filter=False,
-            filler_words=False,
+            paragraphs=True
         )
         
         # Create the source object correctly
@@ -126,8 +119,8 @@ def transcribe_url(url):
             options
         )
         
-        # Extract transcript from response
-        return response.results.channels[0].alternatives[0].transcript
+        # Get the full response for better paragraph handling
+        return response.to_json(indent=4)
         
     except Exception as e:
         raise Exception(f"Transcription failed: {str(e)}")
@@ -146,32 +139,54 @@ if uploaded_file or video_url:
                     # Show audio player
                     st.audio(uploaded_file, format='audio/mp3')
                     # Transcribe the file
-                    transcript = transcribe_file(audio_path)
+                    response_json = transcribe_file(audio_path)
                     
             elif video_url.strip():
-                with st.spinner(" Processing URL..."):
+                with st.spinner("🔗 Processing URL..."):
                     # For direct audio/video URLs, use transcribe_url
                     if video_url.endswith(('.mp3', '.wav', '.m4a', '.ogg')):
                         # Show audio player for direct audio URLs
                         st.audio(video_url, format='audio/mp3')
-                        transcript = transcribe_url(video_url)
+                        response_json = transcribe_url(video_url)
                     else:
                         # For YouTube or other video platforms, download first
                         audio_path = download_audio(video_url)
                         # Show audio player for downloaded audio
                         st.audio(audio_path, format='audio/mp3')
-                        transcript = transcribe_file(audio_path)
+                        response_json = transcribe_url(video_url)
             
             # Display results
             st.success("✅ Done!")
             st.subheader("📄 Transcript")
-            st.text_area("Transcript", transcript, height=300)
-            st.download_button(
-                "📥 Download Transcript (.txt)",
-                data=transcript,
-                file_name="transcript.txt",
-                mime="text/plain"
+            
+            # Parse the JSON response to get the transcript with proper paragraphs
+            response_data = json.loads(response_json)
+            transcript = response_data['results']['channels'][0]['alternatives'][0]['transcript']
+            
+            # Display the transcript with proper formatting
+            st.text_area(
+                "Transcript",
+                transcript,
+                height=300,
+                help="Paragraphs are automatically detected and formatted"
             )
+            
+            # Download both raw JSON and formatted transcript
+            col1, col2 = st.columns(2)
+            with col1:
+                st.download_button(
+                    "📥 Download JSON",
+                    data=response_json,
+                    file_name="transcript.json",
+                    mime="application/json"
+                )
+            with col2:
+                st.download_button(
+                    "📥 Download Transcript (.txt)",
+                    data=transcript,
+                    file_name="transcript.txt",
+                    mime="text/plain"
+                )
             
         except Exception as e:
             st.error(f"❌ Error: {str(e)}")

@@ -1,59 +1,152 @@
 import streamlit as st
+import nest_asyncio
+import yt_dlp
+import asyncio
 from deepgram import DeepgramClient, PrerecordedOptions
-import json
+import os
 
-# 🔐 Deepgram API Key
-DEEPGRAM_API_KEY = "c5266df73298444472067b2cdefda1b96a7c1589"
-deepgram = DeepgramClient(DEEPGRAM_API_KEY)
+# Setup asyncio for Streamlit
+nest_asyncio.apply()
 
-def main():
-    st.set_page_config(page_title="🎙️ Audio Upload Transcriber", layout="centered")
-    st.title("📤 Upload Audio → 🎧 Get Transcript")
+# Load API Key
+DEEPGRAM_API_KEY = st.secrets["DEEPGRAM_API_KEY"]
 
-    st.markdown("Upload an audio file (`.mp3`, `.wav`, `.m4a`, etc.) for transcription using **Deepgram Nova-3**.")
+# Clean layout config
+st.set_page_config(page_title="Transcribe", layout="centered")
 
-    uploaded_file = st.file_uploader("🎵 Upload Audio File:", type=["mp3", "wav", "m4a", "aac"])
+# ----------------------------
+# UI - Clean Tabbed Layout
+# ----------------------------
 
-    if uploaded_file is not None:
-        st.audio(uploaded_file, format='audio/wav')
+st.title("🎙️ Transcribe Audio or Video to Text")
 
-        if st.button("🚀 Transcribe Now"):
-            with st.spinner("Transcribing your audio... 🤖"):
-                try:
-                    audio_bytes = uploaded_file.read()
+tab_upload, tab_link = st.tabs(["Upload", "From link"])
 
-                    options = PrerecordedOptions(
-                        model="nova-3",
-                        language="en",
-                        smart_format=True,
-                        punctuate=True,
-                        paragraphs=True,
-                    )
+uploaded_file = None
+video_url = ""
 
-                    response = deepgram.listen.prerecorded.v("1").transcribe_file(
-                        audio=audio_bytes,
-                        source="buffer",
-                        options=options
-                    )
+with tab_upload:
+    st.markdown("### Upload a file")
+    uploaded_file = st.file_uploader("Choose a file (MP3 or MP4)", type=["mp3", "mp4"])
 
-                    # ✅ Proper JSON parsing of response
-                    result_dict = json.loads(response.to_json())
+with tab_link:
+    st.markdown("### Paste video or audio link")
+    video_url = st.text_input("Enter your link here...", placeholder="e.g. https://youtube.com/...")
 
-                    # ✅ Safe access to transcript
-                    transcript = result_dict["results"]["channels"][0]["alternatives"][0]["transcript"]
+# ----------------------------
+# Helpers
+# ----------------------------
 
-                    st.success("✅ Transcription Complete!")
-                    st.subheader("📝 Transcript:")
-                    st.write(transcript if transcript else "No speech detected.")
+def save_uploaded_file(file):
+    path = os.path.join("/tmp", file.name)
+    with open(path, "wb") as f:
+        f.write(file.read())
+    return path
 
-                    with st.expander("📄 View Full JSON Response"):
-                        st.json(result_dict)
+def download_audio(url):
+    output_base = "/tmp/audio"
+    ydl_opts = {
+        'format': 'bestaudio/best',
+        'outtmpl': output_base + '.%(ext)s',
+        'quiet': True,
+        'postprocessors': [{
+            'key': 'FFmpegExtractAudio',
+            'preferredcodec': 'mp3',
+            'preferredquality': '192',
+        }]
+    }
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        ydl.download([url])
+    return output_base + ".mp3"
 
-                except Exception as e:
-                    st.error(f"❌ Error: {str(e)}")
+async def transcribe_file(file_path):
+    try:
+        # Initialize Deepgram client
+        deepgram = DeepgramClient(DEEPGRAM_API_KEY)
+        
+        # Configure transcription options
+        options = PrerecordedOptions(
+            model="nova-3",
+            language="en",
+            smart_format=True,
+            punctuate=True,
+            paragraphs=True
+        )
+        
+        # Read the file
+        with open(file_path, 'rb') as audio:
+            # Transcribe the file
+            response = await deepgram.listen.prerecorded.v("1").transcribe_file(
+                audio,
+                options
+            )
+            
+            # Extract transcript from response
+            return response.results.channels[0].alternatives[0].transcript
+            
+    except Exception as e:
+        raise Exception(f"Transcription failed: {str(e)}")
 
-    else:
-        st.info("👆 Upload a file to transcribe.")
+async def transcribe_url(url):
+    try:
+        # Initialize Deepgram client
+        deepgram = DeepgramClient(DEEPGRAM_API_KEY)
+        
+        # Configure transcription options
+        options = PrerecordedOptions(
+            model="nova-3",
+            language="en",
+            smart_format=True,
+            punctuate=True,
+            paragraphs=True
+        )
+        
+        # Transcribe the URL
+        response = await deepgram.listen.prerecorded.v("1").transcribe_url(
+            {"url": url},
+            options
+        )
+        
+        # Extract transcript from response
+        return response.results.channels[0].alternatives[0].transcript
+        
+    except Exception as e:
+        raise Exception(f"Transcription failed: {str(e)}")
 
-if __name__ == "__main__":
-    main()
+# ----------------------------
+# Transcribe Trigger
+# ----------------------------
+
+if uploaded_file or video_url:
+    if st.button("🧠 Transcribe"):
+        try:
+            if uploaded_file:
+                with st.spinner("📦 Processing uploaded file..."):
+                    # Save the uploaded file
+                    audio_path = save_uploaded_file(uploaded_file)
+                    # Transcribe the file
+                    transcript = asyncio.run(transcribe_file(audio_path))
+                    
+            elif video_url.strip():
+                with st.spinner("�� Processing URL..."):
+                    # For direct audio/video URLs, use transcribe_url
+                    if video_url.endswith(('.mp3', '.wav', '.m4a', '.ogg')):
+                        transcript = asyncio.run(transcribe_url(video_url))
+                    else:
+                        # For YouTube or other video platforms, download first
+                        audio_path = download_audio(video_url)
+                        transcript = asyncio.run(transcribe_file(audio_path))
+            
+            # Display results
+            st.success("✅ Done!")
+            st.subheader("📄 Transcript")
+            st.text_area("Transcript", transcript, height=300)
+            st.download_button(
+                "📥 Download Transcript (.txt)",
+                data=transcript,
+                file_name="transcript.txt",
+                mime="text/plain"
+            )
+            
+        except Exception as e:
+            st.error(f"❌ Error: {str(e)}")

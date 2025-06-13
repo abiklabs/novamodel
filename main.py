@@ -1,6 +1,7 @@
 import streamlit as st
 from deepgram import DeepgramClient, PrerecordedOptions
 
+# Your Deepgram API Key
 DEEPGRAM_API_KEY = "c5266df73298444472067b2cdefda1b96a7c1589"
 deepgram = DeepgramClient(DEEPGRAM_API_KEY)
 
@@ -16,7 +17,7 @@ def main():
         st.audio(uploaded_file, format="audio/wav")
 
         if st.button("🚀 Transcribe Now"):
-            with st.spinner("Transcribing your audio... 🤖"):
+            with st.spinner("Transcribing your audio... 🎧🧠"):
                 try:
                     audio_bytes = uploaded_file.read()
 
@@ -30,23 +31,26 @@ def main():
 
                     response = deepgram.listen.prerecorded.v("1").transcribe_file(
                         audio=audio_bytes,
-                        source="buffer",  # 💥 This fixes everything
+                        source="buffer",
                         options=options
                     )
 
-                    transcript = response["results"]["channels"][0]["alternatives"][0]["transcript"]
+                    # ✅ FIXED: Convert to dict before indexing
+                    result_dict = response.to_dict()
+                    transcript = result_dict["results"]["channels"][0]["alternatives"][0]["transcript"]
 
                     st.success("✅ Transcription Complete!")
                     st.subheader("📝 Transcript:")
                     st.write(transcript if transcript else "No speech detected.")
 
-                    with st.expander("📄 Full JSON Response"):
-                        st.json(response.to_dict())
+                    with st.expander("📄 View Full JSON Response"):
+                        st.json(result_dict)
 
                 except Exception as e:
-                    st.error(f"❌ Error: {e}")
+                    st.error(f"❌ Error: {str(e)}")
     else:
-        st.info("Please upload an audio file to get started.")
+        st.info("👆 Upload a file to transcribe.")
+
 
 if __name__ == "__main__":
     main()

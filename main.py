@@ -1,6 +1,5 @@
 import streamlit as st
-from deepgram import DeepgramClient, PreRecordedOptions
-import os
+from deepgram import DeepgramClient, PrerecordedOptions
 
 # Your Deepgram API Key
 DEEPGRAM_API_KEY = "c5266df73298444472067b2cdefda1b96a7c1589"
@@ -22,11 +21,9 @@ def main():
         if st.button("🚀 Transcribe Now"):
             with st.spinner("Transcribing your audio... 🤖"):
                 try:
-                    # Convert uploaded file to bytes for Deepgram
                     audio_bytes = uploaded_file.read()
 
-                    # Build options
-                    options = PreRecordedOptions(
+                    options = PrerecordedOptions(
                         model="nova-3",
                         language="en",
                         smart_format=True,
@@ -34,7 +31,6 @@ def main():
                         paragraphs=True,
                     )
 
-                    # Make request to Deepgram using file input
                     response = deepgram.listen.prerecorded.v("1").transcribe_file(
                         audio=audio_bytes,
                         options=options

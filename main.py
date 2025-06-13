@@ -9,7 +9,7 @@ import os
 nest_asyncio.apply()
 
 # Load API Key
-DEEPGRAM_API_KEY = st.secrets["DEEPGRAM_API_KEY"]
+DEEPGRAM_API_KEY = "c5266df73298444472067b2cdefda1b96a7c1589"
 
 # Clean layout config
 st.set_page_config(page_title="Transcribe", layout="centered")

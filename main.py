@@ -64,7 +64,7 @@ def transcribe_file(file_path):
         deepgram = DeepgramClient(DEEPGRAM_API_KEY)
         options = PrerecordedOptions(
             model="nova-3",
-            language="en",
+            language="multi",
             smart_format=True,
             punctuate=True,
             paragraphs=True
@@ -87,7 +87,7 @@ def transcribe_url(url):
         deepgram = DeepgramClient(DEEPGRAM_API_KEY)
         options = PrerecordedOptions(
             model="nova-3",
-            language="en",
+            language="multi",
             smart_format=True,
             punctuate=True,
             paragraphs=True

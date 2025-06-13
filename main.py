@@ -64,8 +64,6 @@ def transcribe_file(file_path):
     try:
         # Initialize Deepgram client
         deepgram = DeepgramClient(DEEPGRAM_API_KEY)
-        
-        # Configure transcription options - matching playground exactly
         options = PrerecordedOptions(
             model="nova-3",
             language="en",
@@ -73,33 +71,22 @@ def transcribe_file(file_path):
             punctuate=True,
             paragraphs=True
         )
-        
-        # Read the file
         with open(file_path, 'rb') as audio:
-            # Create the source object correctly
             source = {
                 'buffer': audio,
                 'mimetype': 'audio/mp3'
             }
-            
-            # Transcribe the file
             response = deepgram.listen.prerecorded.v("1").transcribe_file(
                 source,
                 options
             )
-            
-            # Get the full response for better paragraph handling
             return response.to_json(indent=4)
-            
     except Exception as e:
         raise Exception(f"Transcription failed: {str(e)}")
 
 def transcribe_url(url):
     try:
-        # Initialize Deepgram client
         deepgram = DeepgramClient(DEEPGRAM_API_KEY)
-        
-        # Configure transcription options - matching playground exactly
         options = PrerecordedOptions(
             model="nova-3",
             language="en",
@@ -107,21 +94,14 @@ def transcribe_url(url):
             punctuate=True,
             paragraphs=True
         )
-        
-        # Create the source object correctly
         source = {
             'url': url
         }
-        
-        # Transcribe the URL
         response = deepgram.listen.prerecorded.v("1").transcribe_url(
             source,
             options
         )
-        
-        # Get the full response for better paragraph handling
         return response.to_json(indent=4)
-        
     except Exception as e:
         raise Exception(f"Transcription failed: {str(e)}")
 
@@ -134,59 +114,53 @@ if uploaded_file or video_url:
         try:
             if uploaded_file:
                 with st.spinner("📦 Processing uploaded file..."):
-                    # Save the uploaded file
                     audio_path = save_uploaded_file(uploaded_file)
-                    # Show audio player
                     st.audio(uploaded_file, format='audio/mp3')
-                    # Transcribe the file
                     response_json = transcribe_file(audio_path)
-                    
             elif video_url.strip():
                 with st.spinner("🔗 Processing URL..."):
-                    # For direct audio/video URLs, use transcribe_url
                     if video_url.endswith(('.mp3', '.wav', '.m4a', '.ogg')):
-                        # Show audio player for direct audio URLs
                         st.audio(video_url, format='audio/mp3')
                         response_json = transcribe_url(video_url)
                     else:
-                        # For YouTube or other video platforms, download first
                         audio_path = download_audio(video_url)
-                        # Show audio player for downloaded audio
                         st.audio(audio_path, format='audio/mp3')
-                        response_json = transcribe_url(video_url)
-            
-            # Display results
+                        response_json = transcribe_file(audio_path)
+
             st.success("✅ Done!")
             st.subheader("📄 Transcript")
-            
+
             # Parse the JSON response to get the transcript with proper paragraphs
             response_data = json.loads(response_json)
-            transcript = response_data['results']['channels'][0]['alternatives'][0]['transcript']
-            
-            # Display the transcript with proper formatting
+            paragraphs = []
+            try:
+                para_data = response_data["results"]["channels"][0]["paragraphs"]["paragraphs"]
+                for para in para_data:
+                    # Each paragraph may have a 'sentences' list or a 'transcript' field
+                    if "sentences" in para and para["sentences"]:
+                        text = " ".join(sentence["text"] for sentence in para["sentences"])
+                        paragraphs.append(text.strip())
+                    elif "transcript" in para:
+                        paragraphs.append(para["transcript"].strip())
+            except (KeyError, IndexError, TypeError):
+                # Fallback: use the flat transcript
+                paragraphs = [response_data['results']['channels'][0]['alternatives'][0]['transcript']]
+
+            formatted_transcript = "\n\n".join(paragraphs)
+
             st.text_area(
                 "Transcript",
-                transcript,
+                formatted_transcript,
                 height=300,
-                help="Paragraphs are automatically detected and formatted"
+                help="Paragraphs are separated by blank lines."
             )
-            
-            # Download both raw JSON and formatted transcript
-            col1, col2 = st.columns(2)
-            with col1:
-                st.download_button(
-                    "📥 Download JSON",
-                    data=response_json,
-                    file_name="transcript.json",
-                    mime="application/json"
-                )
-            with col2:
-                st.download_button(
-                    "📥 Download Transcript (.txt)",
-                    data=transcript,
-                    file_name="transcript.txt",
-                    mime="text/plain"
-                )
-            
+
+            st.download_button(
+                "📥 Download Transcript (.txt)",
+                data=formatted_transcript,
+                file_name="transcript.txt",
+                mime="text/plain"
+            )
+
         except Exception as e:
             st.error(f"❌ Error: {str(e)}")

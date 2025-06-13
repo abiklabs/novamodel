@@ -4,6 +4,7 @@ import streamlit as st
 import asyncio
 from deepgram import DeepgramClient, PrerecordedOptions
 import yt_dlp
+import re
 
 # Your Deepgram API Key
 DEEPGRAM_API_KEY = "c5266df73298444472067b2cdefda1b96a7c1589"
@@ -14,6 +15,19 @@ AUDIO_FILE = "/tmp/audio_converted.wav"
 
 # Initialize Deepgram client
 deepgram = DeepgramClient(DEEPGRAM_API_KEY)
+
+# -----------------------------
+# URL Processing
+# -----------------------------
+def clean_url(url):
+    # Remove any tracking parameters from TikTok URLs
+    if 'tiktok.com' in url:
+        # Extract the main video ID
+        match = re.search(r'/video/(\d+)', url)
+        if match:
+            video_id = match.group(1)
+            return f"https://www.tiktok.com/@user/video/{video_id}"
+    return url
 
 # -----------------------------
 # Transcribe audio using Deepgram Nova-3
@@ -34,7 +48,6 @@ async def transcribe(audio_path):
                 options
             )
 
-        # Access the transcript from the new response structure
         return response.results.channels[0].alternatives[0].transcript
 
     except Exception as e:
@@ -46,6 +59,9 @@ async def transcribe(audio_path):
 def download_audio(url):
     try:
         output_path = TEMP_MP3
+        # Clean the URL first
+        clean_video_url = clean_url(url)
+        
         ydl_opts = {
             'format': 'bestaudio/best',
             'outtmpl': output_path,
@@ -54,11 +70,25 @@ def download_audio(url):
                 'key': 'FFmpegExtractAudio',
                 'preferredcodec': 'mp3',
                 'preferredquality': '192',
-            }]
+            }],
+            # Add specific options for TikTok
+            'extractor_args': {
+                'tiktok': {
+                    'api_hostname': 'api16-normal-c-useast1a.tiktokv.com',
+                }
+            }
         }
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            ydl.download([url])
+            try:
+                ydl.download([clean_video_url])
+            except Exception as e:
+                st.error(f"Error downloading video: {str(e)}")
+                # Try alternative method for TikTok
+                if 'tiktok.com' in url:
+                    ydl_opts['extractor_args']['tiktok']['api_hostname'] = 'api22-normal-c-useast1a.tiktokv.com'
+                    with yt_dlp.YoutubeDL(ydl_opts) as ydl2:
+                        ydl2.download([clean_video_url])
 
         if not os.path.exists(output_path):
             raise RuntimeError("yt-dlp failed to extract usable audio.")
@@ -100,7 +130,6 @@ if st.button("Start Transcription"):
 
             with st.spinner("💬 Transcribing with Deepgram Nova-3..."):
                 try:
-                    # Run async transcribe function
                     transcript = asyncio.run(transcribe(audio_path))
                     st.success("✅ Transcription Complete!")
                     st.subheader("📄 Transcript")

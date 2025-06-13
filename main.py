@@ -21,18 +21,21 @@ def transcribe(audio_path):
     )
 
     with open(audio_path, "rb") as audio:
-        response = deepgram.listen.prerecorded.v("1").transcribe_file(audio, options)
+        response = deepgram.listen.prerecorded.v("1").transcribe_file(
+            audio, options, mimetype="audio/wav"  # Explicitly tell Deepgram the file format
+        )
 
     transcript = response["results"]["channels"][0]["alternatives"][0]["transcript"]
     return transcript
 
-# Download audio using yt-dlp
+# Download audio using yt-dlp and convert to WAV
 def download_audio(url):
     try:
         subprocess.run([
             "yt-dlp",
             "-x",
             "--audio-format", "wav",
+            "--audio-quality", "0",  # best quality
             "-o", AUDIO_FILE,
             url
         ], check=True)

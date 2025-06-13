@@ -135,17 +135,23 @@ if uploaded_file or video_url:
                 with st.spinner("📦 Processing uploaded file..."):
                     # Save the uploaded file
                     audio_path = save_uploaded_file(uploaded_file)
+                    # Show audio player
+                    st.audio(uploaded_file, format='audio/mp3')
                     # Transcribe the file
                     transcript = transcribe_file(audio_path)
                     
             elif video_url.strip():
-                with st.spinner("�� Processing URL..."):
+                with st.spinner("🔗 Processing URL..."):
                     # For direct audio/video URLs, use transcribe_url
                     if video_url.endswith(('.mp3', '.wav', '.m4a', '.ogg')):
+                        # Show audio player for direct audio URLs
+                        st.audio(video_url, format='audio/mp3')
                         transcript = transcribe_url(video_url)
                     else:
                         # For YouTube or other video platforms, download first
                         audio_path = download_audio(video_url)
+                        # Show audio player for downloaded audio
+                        st.audio(audio_path, format='audio/mp3')
                         transcript = transcribe_file(audio_path)
             
             # Display results

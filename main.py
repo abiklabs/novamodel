@@ -154,53 +154,6 @@ def transcribe_url(url):
     except Exception as e:
         raise Exception(f"Transcription failed: {str(e)}")
 
-def transcribe_url(url):
-    try:
-        # Initialize Deepgram client
-        deepgram = DeepgramClient(DEEPGRAM_API_KEY)
-        
-        # Configure transcription options with enhanced formatting
-        options = PrerecordedOptions(
-            model="nova-3",
-            language="en",
-            smart_format=True,
-            punctuate=True,
-            paragraphs=True,
-            diarize=False,
-            utterances=False,
-            summarize=False,
-            detect_topics=False,
-            detect_language=False,
-            filler_words=False,
-            profanity_filter=False,
-            redact=False,
-            alternatives=False,
-            numbers=True,
-            numbers_spaces=True,
-            profanity_filter=False,
-            replace_numbers=True,
-            search=False,
-            tag_confidence=False,
-            tier="enhanced"
-        )
-        
-        # Create the source object correctly
-        source = {
-            'url': url
-        }
-        
-        # Transcribe the URL
-        response = deepgram.listen.prerecorded.v("1").transcribe_url(
-            source,
-            options
-        )
-        
-        # Extract transcript from response
-        return response.results.channels[0].alternatives[0].transcript
-        
-    except Exception as e:
-        raise Exception(f"Transcription failed: {str(e)}")
-
 # ----------------------------
 # Transcribe Trigger
 # ----------------------------
@@ -218,7 +171,7 @@ if uploaded_file or video_url:
                     transcript = transcribe_file(audio_path)
                     
             elif video_url.strip():
-                with st.spinner("�� Processing URL..."):
+                with st.spinner(" Processing URL..."):
                     # For direct audio/video URLs, use transcribe_url
                     if video_url.endswith(('.mp3', '.wav', '.m4a', '.ogg')):
                         # Show audio player for direct audio URLs

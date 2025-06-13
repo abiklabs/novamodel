@@ -64,13 +64,29 @@ def transcribe_file(file_path):
         # Initialize Deepgram client
         deepgram = DeepgramClient(DEEPGRAM_API_KEY)
         
-        # Configure transcription options
+        # Configure transcription options with enhanced formatting
         options = PrerecordedOptions(
             model="nova-3",
             language="en",
             smart_format=True,
             punctuate=True,
-            paragraphs=True
+            paragraphs=True,
+            diarize=False,
+            utterances=False,
+            summarize=False,
+            detect_topics=False,
+            detect_language=False,
+            filler_words=False,
+            profanity_filter=False,
+            redact=False,
+            alternatives=False,
+            numbers=True,
+            numbers_spaces=True,
+            profanity_filter=False,
+            replace_numbers=True,
+            search=False,
+            tag_confidence=False,
+            tier="enhanced"
         )
         
         # Read the file
@@ -98,13 +114,29 @@ def transcribe_url(url):
         # Initialize Deepgram client
         deepgram = DeepgramClient(DEEPGRAM_API_KEY)
         
-        # Configure transcription options
+        # Configure transcription options with enhanced formatting
         options = PrerecordedOptions(
             model="nova-3",
             language="en",
             smart_format=True,
             punctuate=True,
-            paragraphs=True
+            paragraphs=True,
+            diarize=False,
+            utterances=False,
+            summarize=False,
+            detect_topics=False,
+            detect_language=False,
+            filler_words=False,
+            profanity_filter=False,
+            redact=False,
+            alternatives=False,
+            numbers=True,
+            numbers_spaces=True,
+            profanity_filter=False,
+            replace_numbers=True,
+            search=False,
+            tag_confidence=False,
+            tier="enhanced"
         )
         
         # Create the source object correctly
@@ -141,7 +173,7 @@ if uploaded_file or video_url:
                     transcript = transcribe_file(audio_path)
                     
             elif video_url.strip():
-                with st.spinner("🔗 Processing URL..."):
+                with st.spinner("�� Processing URL..."):
                     # For direct audio/video URLs, use transcribe_url
                     if video_url.endswith(('.mp3', '.wav', '.m4a', '.ogg')):
                         # Show audio player for direct audio URLs

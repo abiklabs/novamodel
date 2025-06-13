@@ -1,59 +1,58 @@
 import streamlit as st
-from deepgram import DeepgramClient, PrerecordedOptions
-import json
+from deepgram import DeepgramClient, PreRecordedOptions
+import os
 
-# Your Deepgram API key
+# Your Deepgram API Key
 DEEPGRAM_API_KEY = "c5266df73298444472067b2cdefda1b96a7c1589"
 
-# Initialize Deepgram client
+# Init Deepgram SDK client
 deepgram = DeepgramClient(DEEPGRAM_API_KEY)
 
-# Streamlit app starts here
 def main():
-    st.set_page_config(page_title="🎙️ Audio Transcriber", layout="centered")
+    st.set_page_config(page_title="🎙️ Audio Upload Transcriber", layout="centered")
+    st.title("📤 Upload Audio → 🎧 Get Transcript")
 
-    st.title("🎧 Deepgram Audio Transcriber")
-    st.write("Paste a valid audio URL below and get the transcription using Deepgram Nova-3")
+    st.markdown("Upload an audio file (`.mp3`, `.wav`, `.m4a`, etc.) for transcription using **Deepgram Nova-3**.")
 
-    # Input field for audio URL
-    audio_url = st.text_input(
-        "🔗 Audio File URL:",
-        placeholder="https://example.com/audio.wav"
-    )
+    uploaded_file = st.file_uploader("🎵 Upload Audio File:", type=["mp3", "wav", "m4a", "aac"])
 
-    if st.button("🚀 Transcribe"):
-        if not audio_url:
-            st.error("Please enter a valid audio URL before clicking transcribe.")
-            return
+    if uploaded_file is not None:
+        st.audio(uploaded_file, format="audio/wav")
 
-        with st.spinner("Transcribing... please wait ⏳"):
-            try:
-                options = PrerecordedOptions(
-                    model="nova-3",
-                    language="en",
-                    smart_format=True,
-                    punctuate=True,
-                    paragraphs=True,
-                )
+        if st.button("🚀 Transcribe Now"):
+            with st.spinner("Transcribing your audio... 🤖"):
+                try:
+                    # Convert uploaded file to bytes for Deepgram
+                    audio_bytes = uploaded_file.read()
 
-                response = deepgram.listen.prerecorded.v("1").transcribe_url(
-                    {"url": audio_url},
-                    options,
-                )
+                    # Build options
+                    options = PreRecordedOptions(
+                        model="nova-3",
+                        language="en",
+                        smart_format=True,
+                        punctuate=True,
+                        paragraphs=True,
+                    )
 
-                # Parse and display result
-                transcription = response["results"]["channels"][0]["alternatives"][0]["transcript"]
+                    # Make request to Deepgram using file input
+                    response = deepgram.listen.prerecorded.v("1").transcribe_file(
+                        audio=audio_bytes,
+                        options=options
+                    )
 
-                st.success("✅ Transcription Complete!")
-                st.subheader("📝 Transcript:")
-                st.write(transcription)
+                    transcript = response["results"]["channels"][0]["alternatives"][0]["transcript"]
 
-                with st.expander("📄 Full JSON Response"):
-                    st.json(response.to_dict())
+                    st.success("✅ Transcription Complete!")
+                    st.subheader("📝 Transcript:")
+                    st.write(transcript if transcript else "No speech detected.")
 
-            except Exception as e:
-                st.error(f"❌ Error: {e}")
+                    with st.expander("📄 View Full JSON Response"):
+                        st.json(response.to_dict())
 
+                except Exception as e:
+                    st.error(f"❌ Error: {e}")
+    else:
+        st.info("Please upload an audio file to get started.")
 
 if __name__ == "__main__":
     main()

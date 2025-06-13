@@ -1,10 +1,7 @@
 import streamlit as st
 from deepgram import DeepgramClient, PrerecordedOptions
 
-# Your Deepgram API Key
 DEEPGRAM_API_KEY = "c5266df73298444472067b2cdefda1b96a7c1589"
-
-# Init Deepgram SDK client
 deepgram = DeepgramClient(DEEPGRAM_API_KEY)
 
 def main():
@@ -33,6 +30,7 @@ def main():
 
                     response = deepgram.listen.prerecorded.v("1").transcribe_file(
                         audio=audio_bytes,
+                        source="buffer",  # 💥 This fixes everything
                         options=options
                     )
 
@@ -42,7 +40,7 @@ def main():
                     st.subheader("📝 Transcript:")
                     st.write(transcript if transcript else "No speech detected.")
 
-                    with st.expander("📄 View Full JSON Response"):
+                    with st.expander("📄 Full JSON Response"):
                         st.json(response.to_dict())
 
                 except Exception as e:

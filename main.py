@@ -73,18 +73,8 @@ def transcribe_file(file_path):
             paragraphs=True,
             diarize=False,
             utterances=False,
-            summarize=False,
-            detect_topics=False,
-            detect_language=False,
-            filler_words=False,
             profanity_filter=False,
-            redact=False,
-            alternatives=False,
-            numerals=True,
-            numerals_spaces=True,
-            replace_numbers=True,
-            search=False,
-            tag_confidence=False,
+            filler_words=False,
             tier="enhanced"
         )
         
@@ -122,18 +112,8 @@ def transcribe_url(url):
             paragraphs=True,
             diarize=False,
             utterances=False,
-            summarize=False,
-            detect_topics=False,
-            detect_language=False,
-            filler_words=False,
             profanity_filter=False,
-            redact=False,
-            alternatives=False,
-            numerals=True,
-            numerals_spaces=True,
-            replace_numbers=True,
-            search=False,
-            tag_confidence=False,
+            filler_words=False,
             tier="enhanced"
         )
         

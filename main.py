@@ -8,8 +8,8 @@ import os
 # Setup asyncio for Streamlit
 nest_asyncio.apply()
 
-# Load API Key
-DEEPGRAM_API_KEY = "c5266df73298444472067b2cdefda1b96a7c1589"
+# For quick testing - API Key
+DEEPGRAM_API_KEY = "c5266df73298444472067b2cdefda1b96a7c1589"  # Your API key here
 
 # Clean layout config
 st.set_page_config(page_title="Transcribe", layout="centered")
@@ -75,9 +75,15 @@ async def transcribe_file(file_path):
         
         # Read the file
         with open(file_path, 'rb') as audio:
+            # Create the source object correctly
+            source = {
+                'buffer': audio,
+                'mimetype': 'audio/mp3'  # or appropriate mimetype
+            }
+            
             # Transcribe the file
             response = await deepgram.listen.prerecorded.v("1").transcribe_file(
-                audio,
+                source,
                 options
             )
             
@@ -101,9 +107,14 @@ async def transcribe_url(url):
             paragraphs=True
         )
         
+        # Create the source object correctly
+        source = {
+            'url': url
+        }
+        
         # Transcribe the URL
         response = await deepgram.listen.prerecorded.v("1").transcribe_url(
-            {"url": url},
+            source,
             options
         )
         
@@ -128,7 +139,7 @@ if uploaded_file or video_url:
                     transcript = asyncio.run(transcribe_file(audio_path))
                     
             elif video_url.strip():
-                with st.spinner("�� Processing URL..."):
+                with st.spinner("🔗 Processing URL..."):
                     # For direct audio/video URLs, use transcribe_url
                     if video_url.endswith(('.mp3', '.wav', '.m4a', '.ogg')):
                         transcript = asyncio.run(transcribe_url(video_url))

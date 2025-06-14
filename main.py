@@ -9,7 +9,7 @@ import json
 nest_asyncio.apply()
 
 # For quick testing - API Key
-DEEPGRAM_API_KEY = "c5266df73298444472067b2cdefda1b96a7c1589"
+DEEPGRAM_API_KEY = "e8af3f12650ff4398b021c245489f0d2fed19f62"
 
 # Clean layout config
 st.set_page_config(page_title="Transcribe", layout="centered")
